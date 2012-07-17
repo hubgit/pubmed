@@ -1,0 +1,5 @@
+DirectoryIndex index.html
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !index.html
+RewriteRule ^(.+) index.php?_path=$1 [L,QSA]
