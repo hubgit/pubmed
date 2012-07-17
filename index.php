@@ -15,6 +15,8 @@ require __DIR__ . '/route.php';
 $config = parse_ini_file('config.ini');
 define('BASE', $config['base_uri']);
 
+header('Access-Control-Allow-Origin: *');
+
 try {
 	$request = new Request;
 	$response = route($request);
