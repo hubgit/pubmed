@@ -3,7 +3,6 @@
 function route(Request $request) {
 	switch ($_SERVER['REQUEST_METHOD']) {
 		case 'OPTIONS':
-			header('Access-Control-Allow-Origin: *');
 			break;
 
 		case 'GET':

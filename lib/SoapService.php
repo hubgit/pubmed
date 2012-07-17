@@ -9,6 +9,7 @@ class SoapService {
 			'features' => SOAP_SINGLE_ELEMENT_ARRAYS + SOAP_USE_XSI_ARRAY_TYPE,
           	'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP,
           	'cache_wsdl' => WSDL_CACHE_MEMORY,
+          	'keep_alive' => true,
 			//'trace' => true,
 		));
 	}
