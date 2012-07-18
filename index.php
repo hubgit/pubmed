@@ -1,6 +1,7 @@
 <?php
 
 ob_start();
+ob_start('ob_gzhandler');
 
 //ini_set('display_errors', true);
 //error_reporting(E_ERROR | E_PARSE);
@@ -21,7 +22,9 @@ try {
 		case 'GET':
 			if(!isset($_GET['history'])) throw new WebException(404);
 
-			$config = parse_ini_file(__DIR__ . '/../config.ini');
+			$history = $_GET['history'];
+
+			$total = isset($_GET['total']) ? $_GET['total'] : 1000;
 
 			$offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
 			$offset = max(0, $offset);
@@ -29,25 +32,54 @@ try {
 			$n = isset($_GET['n']) ? (int) $_GET['n'] : 20;
 			$n = min($n, 100);
 
-			$service = new EFetch($config['tool'], $config['email']);
-			$result = $service->getHistory($history, $offset, $n);
-
-			$data = array(
-				'startIndex' => $offset,
-				'itemsPerPage' => $n,
-				'items' => MODS::toJSON($result, $config['bibutils']),
-				'links' => array(),
-			);
-
-			$nextOffset = $offset + $n;
-
-			if ($nextOffset ) {
-				$params = array('history' => $history, 'n' => $n, 'offset' => $offset + $n);
-				$data['links']['next'] = $config['base_uri'] . 'articles/' . '?' . http_build_query($params);
-			}
+			$format = isset($_GET['format']) ? $_GET['format'] : 'application/json';
 
 			$response = new Response(200);
-			$response->setBody($data);
+			$response->setContentType($format);
+			$response->outputHeader();
+
+			$config = parse_ini_file(__DIR__ . '/config.ini');
+
+			$service = new EFetch($config['tool'], $config['email']);
+			$nlmfile = $service->getHistory($history, $offset, $n);
+
+			$mods = new MODS($config['bibutils']);
+			$mods->fromNLM($nlmfile);
+
+			switch($format) {
+				case 'application/json':
+					$data = array(
+						'startIndex' => $offset,
+						'itemsPerPage' => $n,
+						'items' => $mods->toJSON(),
+						'links' => array(),
+					);
+
+					$nextOffset = $offset + $n;
+
+					if($nextOffset <= $total) {
+						$params = array('history' => $history, 'total' => $total, 'n' => $n, 'offset' => $nextOffset);
+						$data['links']['next'] = $config['base_uri'] . 'articles/' . '?' . http_build_query($params);
+					}
+
+					$response->setBody($data);
+					$response->outputBody();
+				break;
+
+				case 'text/bibtex':
+					header('Content-Disposition: attachment; filename=hubmed.bib');
+					$mods->toBibTeX(); // outputs data directly using passthru
+					break;
+
+				case 'application/research-info-systems':
+					header('Content-Disposition: attachment; filename=hubmed.ris');
+					$mods->toRIS(); // outputs data directly using passthru
+					break;
+
+				default:
+					throw new WebException(415);
+			}
+
 			break;
 
 		default:
@@ -55,15 +87,14 @@ try {
 	}
 }
 catch (WebException $e) {
+	ob_clean();
 	$response = new Response($e->getCode(), $e->getMessage());
 }
 catch (Exception $e) {
+	ob_clean();
 	$response = new Response(500, $e->getMessage());
 }
 
-try {
-	if($response instanceof Response) $response->output();
-}
-catch (Exception $e) {
-	//print $e->getMessage();
-}
+ob_end_flush(); // gzip buffer
+header('Content-Length: ' . ob_get_length());
+ob_end_flush(); // plain buffer

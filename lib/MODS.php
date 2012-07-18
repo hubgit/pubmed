@@ -3,35 +3,61 @@
 require_once 'Zend/Json.php';
 
 class MODS {
-	static function fromNLM($infile, $bibutils = './') {
-		$config = parse_ini_file(__DIR__ . '/../config.ini');
-		$outfile = tempnam(sys_get_temp_dir(), 'mods-');
+	protected $bibutils;
+	protected $modsfile;
 
-		$command = sprintf($bibutils . 'med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($infile), escapeshellarg($outfile));
+	function __construct($bibutils = './') {
+		if(!file_exists($bibutils . '/med2xml')) throw new WebException(500, 'bibutils not found');
+
+		$this->bibutils = $bibutils;
+		$this->modsfile = tempnam(sys_get_temp_dir(), 'mods-');
+	}
+
+	function __destruct() {
+       if(file_exists($this->modsfile)) unlink($this->modsfile);
+	}
+
+	public function fromNLM($nlmfile) {
+		if(!file_exists($nlmfile)) throw new WebException(500, 'nlm file not found');
+
+		$command = sprintf($this->bibutils . 'med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($nlmfile), escapeshellarg($this->modsfile));
 		//print $command;
 		exec($command);
 
-		$xml = file_get_contents($outfile);
-
-		unlink($infile);
-		unlink($outfile);
-
-		return Zend_Json::fromXml($xml, false);
+		unlink($nlmfile);
 	}
 
-	static function toJSON($data) {
-		$data = Zend_Json::decode($data, Zend_Json::TYPE_OBJECT);
-		return array_map(array('self', 'fix'), self::ensureArray($data->modsCollection->mods));
+	public function toJSON() {
+		$json = Zend_Json::fromXml(file_get_contents($this->modsfile), false);
+		$data = Zend_Json::decode($json, Zend_Json::TYPE_OBJECT);
+		return array_map(array($this, 'fix'), $this->ensureArray($data->modsCollection->mods));
 	}
 
-	static function fix($data) {
+	public function toBibTeX() {
+		$command = sprintf($this->bibutils . 'xml2bib -i utf8 --unicode-no-bom %s', escapeshellarg($this->modsfile));
+		//print $command;
+		passthru($command);
+	}
+
+	public function toRIS() {
+		$command = sprintf($this->bibutils . 'xml2ris -i utf8 --unicode-no-bom %s', escapeshellarg($this->modsfile));
+		//print $command;
+		passthru($command);
+	}
+
+	protected function ensureArray($item) {
+		if(!$item) return array();
+		return is_array($item) ? $item : array($item);
+	}
+
+	protected function fix($data) {
 		// title
 		$data->titleInfo->title = rtrim($data->titleInfo->title, '.');
 
 		// names
 		$items = array();
 
-		foreach(self::ensureArray($data->{'name'}) as $item) {
+		foreach($this->ensureArray($data->{'name'}) as $item) {
 			if(!is_array($item->{'namePart'})) continue;
 
 			$parts = array(
@@ -50,7 +76,7 @@ class MODS {
 		// host title
 		$items = array();
 
-		foreach(self::ensureArray($data->{'relatedItem'}->{'titleInfo'}) as $item) {
+		foreach($this->ensureArray($data->{'relatedItem'}->{'titleInfo'}) as $item) {
 			$type = $item->{'@attributes'}->{'type'};
 			if(!$type) $type = 'full';
 			$items[$type] = rtrim($item->{'title'}, '.');
@@ -61,7 +87,7 @@ class MODS {
 		// host identifiers
 		$items = array();
 
-		foreach(self::ensureArray($data->{'relatedItem'}->{'identifier'}) as $item) {
+		foreach($this->ensureArray($data->{'relatedItem'}->{'identifier'}) as $item) {
 			$items[$item->{'@attributes'}->{'type'}] = $item->{'@text'};
 		}
 
@@ -70,7 +96,7 @@ class MODS {
 		// host details
 		$items = array();
 
-		foreach(self::ensureArray($data->{'relatedItem'}->{'part'}->{'detail'}) as $item) {
+		foreach($this->ensureArray($data->{'relatedItem'}->{'part'}->{'detail'}) as $item) {
 			$items[$item->{'@attributes'}->{'type'}] = $item->{'number'};
 		}
 
@@ -79,7 +105,7 @@ class MODS {
 		// pages
 		$items = array();
 
-		foreach(self::ensureArray($data->{'relatedItem'}->{'part'}->{'extent'}) as $item) {
+		foreach($this->ensureArray($data->{'relatedItem'}->{'part'}->{'extent'}) as $item) {
 			$items[$item->{'@attributes'}->{'unit'}] = array(
 				'start' => $item->start,
 				'end' => $item->end,
@@ -96,7 +122,7 @@ class MODS {
 		// identifiers
 		$items = array();
 
-		foreach(self::ensureArray($data->{'identifier'}) as $item) {
+		foreach($this->ensureArray($data->{'identifier'}) as $item) {
 			$items[$item->{'@attributes'}->{'type'}] = $item->{'@text'};
 		}
 
@@ -120,10 +146,5 @@ class MODS {
 		}
 
 		return $data;
-	}
-
-	static function ensureArray($item) {
-		if(!$item) return array();
-		return is_array($item) ? $item : array($item);
 	}
 }

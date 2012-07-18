@@ -13,17 +13,15 @@ class EFetch {
 			'retstart' => 0,
 			'retmax' => 20,
 		);
-
-		parent::__construct();
 	}
 
 	protected function get($params) {
-		$infile = tempnam(sys_get_temp_dir(), 'med-');
+		$nlmfile = tempnam(sys_get_temp_dir(), 'med-');
 
 		$url = $this->base . '?' . http_build_query($params + $this->defaults);
-		copy($url, $infile);
+		copy($url, $nlmfile);
 
-		return MODS::fromNLM($infile); // deletes $infile
+		return $nlmfile;
 	}
 
 	public function getHistory($history, $offset = 0, $n = 20) {

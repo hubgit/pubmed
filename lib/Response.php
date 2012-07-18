@@ -3,6 +3,7 @@
 class Response {
 	private $status;
 	private $body;
+	private $contentType = 'application/json';
 
 	/**
 	 * http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -60,6 +61,10 @@ class Response {
 		$this->status = $status;
 	}
 
+	function setContentType($mimeType) {
+		$this->contentType = $mimeType;
+	}
+
 	function setBody($data) {
 		$this->body = $data;
 	}
@@ -70,7 +75,7 @@ class Response {
 
 	function outputHeader() {
 		header(sprintf('HTTP/1.1 %d %s', $this->status, $this->messages[$this->status]));
-		header('Content-Type: application/json; charset=utf-8');
+		header(sprintf('Content-Type: %s; charset=utf-8', $this->contentType));
 	}
 
 	function outputBody() {
