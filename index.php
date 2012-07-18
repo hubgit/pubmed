@@ -4,18 +4,13 @@ ob_start();
 
 ini_set('display_errors', true);
 
-error_reporting(E_ERROR | E_PARSE);
+//error_reporting(E_ERROR | E_PARSE);
 
 set_include_path(__DIR__ . '/lib/' . PATH_SEPARATOR . get_include_path());
-require 'Zend/Json.php';
 
 function __autoload($name) {
-    include __DIR__ . '/lib/' . $name . '.php';
+    include $name . '.php';
 }
-
-$config = parse_ini_file('config.ini');
-define('BASE', $config['base_uri']);
-define('BIBUTILS', $config['bibutils']);
 
 header('Access-Control-Allow-Origin: *');
 

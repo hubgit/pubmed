@@ -1,6 +1,6 @@
 <?php
 
-class EFetchPubMed extends EUtils {
+class EFetch extends EUtils {
 	protected $url = 'efetch.fcgi';
 
 	function getHistory($history, $offset = 0, $n = 20) {
@@ -27,25 +27,10 @@ class EFetchPubMed extends EUtils {
 	}
 
 	function get($params) {
-		$dir = sys_get_temp_dir();
-
-		$infile = tempnam($dir, 'med-');
-		$outfile = tempnam($dir, 'mods-');
-
 		$input = $this->build_url($this->base . $this->url, $params + $this->defaults);
+		$infile = tempnam(sys_get_temp_dir(), 'med-');
 		copy($input, $infile);
 
-		$command = sprintf(BIBUTILS . 'med2xml -i utf8 --unicode-no-bom %s > %s',
-			escapeshellarg($infile), escapeshellarg($outfile));
-		exec($command);
-
-		$data = Zend_Json::fromXml(file_get_contents($outfile), false);
-		$data = Zend_Json::decode($data, Zend_Json::TYPE_OBJECT);
-
-		unlink($infile);
-		unlink($outfile);
-
-		return $data->modsCollection->mods;
+		return MODS::fromNLM($infile); // deletes $infile
 	}
-
 }
