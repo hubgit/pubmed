@@ -1,15 +1,38 @@
 <?php
 
-class EFetch extends EUtils {
-	protected $url = 'efetch.fcgi';
+class EFetch {
+	protected $base = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi';
 
-	function getHistory($history, $offset = 0, $n = 20) {
-		list($webenv, $querykey) = explode('|', $history);
+	public function __construct($tool, $email, $db = 'pubmed') {
+		$this->defaults = array(
+			'db' => $db,
+			'tool' => $tool,
+			'email' => $email,
+			'usehistory' => 'y',
+			'rettype' => 'xml',
+			'retstart' => 0,
+			'retmax' => 20,
+		);
+
+		parent::__construct();
+	}
+
+	protected function get($params) {
+		$infile = tempnam(sys_get_temp_dir(), 'med-');
+
+		$url = $this->base . '?' . http_build_query($params + $this->defaults);
+		copy($url, $infile);
+
+		return MODS::fromNLM($infile); // deletes $infile
+	}
+
+	public function getHistory($history, $offset = 0, $n = 20) {
+		list($webEnv, $queryKey) = explode('|', $history);
 
 		$params = array(
 			'db' => 'pubmed',
-      		'webenv' => $webenv,
-      		'query_key' => $querykey,
+      		'webenv' => $webEnv,
+      		'query_key' => $queryKey,
 			'retstart' => $offset,
 			'retmax' => $n,
 		);
@@ -17,20 +40,12 @@ class EFetch extends EUtils {
 		return $this->get($params);
 	}
 
-	function getIds($id) {
+	public function getIds($id) {
 		$params = array(
 			'db' => 'pubmed',
 			'id' => $id,
 		);
 
 		return $this->get($params);
-	}
-
-	function get($params) {
-		$input = $this->build_url($this->base . $this->url, $params + $this->defaults);
-		$infile = tempnam(sys_get_temp_dir(), 'med-');
-		copy($input, $infile);
-
-		return MODS::fromNLM($infile); // deletes $infile
 	}
 }

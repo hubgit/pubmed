@@ -19,8 +19,32 @@ try {
 			break;
 
 		case 'GET':
-			$handler = new Articles;
-			$data = $handler->get();
+			if(!isset($_GET['history'])) throw new WebException(404);
+
+			$config = parse_ini_file(__DIR__ . '/../config.ini');
+
+			$offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
+			$offset = max(0, $offset);
+
+			$n = isset($_GET['n']) ? (int) $_GET['n'] : 20;
+			$n = min($n, 100);
+
+			$service = new EFetch($config['tool'], $config['email']);
+			$result = $service->getHistory($history, $offset, $n);
+
+			$data = array(
+				'startIndex' => $offset,
+				'itemsPerPage' => $n,
+				'items' => MODS::toJSON($result, $config['bibutils']),
+				'links' => array(),
+			);
+
+			$nextOffset = $offset + $n;
+
+			if ($nextOffset ) {
+				$params = array('history' => $history, 'n' => $n, 'offset' => $offset + $n);
+				$data['links']['next'] = $config['base_uri'] . 'articles/' . '?' . http_build_query($params);
+			}
 
 			$response = new Response(200);
 			$response->setBody($data);
@@ -41,5 +65,5 @@ try {
 	if($response instanceof Response) $response->output();
 }
 catch (Exception $e) {
-	print $e->getMessage();
+	//print $e->getMessage();
 }

@@ -3,11 +3,11 @@
 require_once 'Zend/Json.php';
 
 class MODS {
-	static function fromNLM($infile) {
+	static function fromNLM($infile, $bibutils = './') {
 		$config = parse_ini_file(__DIR__ . '/../config.ini');
 		$outfile = tempnam(sys_get_temp_dir(), 'mods-');
 
-		$command = sprintf($config['bibutils'] . 'med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($infile), escapeshellarg($outfile));
+		$command = sprintf($bibutils . 'med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($infile), escapeshellarg($outfile));
 		//print $command;
 		exec($command);
 
