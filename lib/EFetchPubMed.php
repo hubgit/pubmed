@@ -35,7 +35,7 @@ class EFetchPubMed extends EUtils {
 		$input = $this->build_url($this->base . $this->url, $params + $this->defaults);
 		copy($input, $infile);
 
-		$command = sprintf('/usr/local/bin/med2xml -i utf8 --unicode-no-bom %s > %s',
+		$command = sprintf(BIBUTILS . 'med2xml -i utf8 --unicode-no-bom %s > %s',
 			escapeshellarg($infile), escapeshellarg($outfile));
 		exec($command);
 

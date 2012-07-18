@@ -156,7 +156,7 @@ class Articles extends Collection {
 
 		// date
 		$date = $data->{'relatedItem'}->part->date;
-		$date = preg_replace('/\/\w+/g', '');
+		$date = preg_replace('/\/\w+/', '', $date);
 		$parts = explode('-', $date);
 
 		if($parts) {

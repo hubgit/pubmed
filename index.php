@@ -15,6 +15,7 @@ function __autoload($name) {
 
 $config = parse_ini_file('config.ini');
 define('BASE', $config['base_uri']);
+define('BIBUTILS', $config['bibutils']);
 
 header('Access-Control-Allow-Origin: *');
 
