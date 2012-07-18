@@ -2,8 +2,7 @@
 
 ob_start();
 
-ini_set('display_errors', true);
-
+//ini_set('display_errors', true);
 //error_reporting(E_ERROR | E_PARSE);
 
 set_include_path(__DIR__ . '/lib/' . PATH_SEPARATOR . get_include_path());

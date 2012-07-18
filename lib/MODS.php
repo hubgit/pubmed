@@ -32,6 +32,8 @@ class MODS {
 		$items = array();
 
 		foreach(self::ensureArray($data->{'name'}) as $item) {
+			if(!is_array($item->{'namePart'})) continue;
+
 			$parts = array(
 				'type' => $item->{'@attributes'}->{'type'},
 			);
