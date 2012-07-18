@@ -60,8 +60,8 @@ class Response {
 		$this->status = $status;
 	}
 
-	function setBody($body) {
-		$this->body = $body;
+	function setBody($data) {
+		$this->body = $data;
 	}
 
 	function setTemplate($template) {
@@ -74,6 +74,7 @@ class Response {
 	}
 
 	function outputBody() {
+		if(!isset($this->body)) return;
 		print json_encode($this->body);
 	}
 

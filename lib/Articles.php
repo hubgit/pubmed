@@ -7,9 +7,9 @@ class Articles extends Collection {
 			$result = $service->get($_GET['term']);
 
 			return array(
-				'totalResults' => $result->Count,
+				'totalResults' => (int) $result->Count,
 				'links' => array(
-					'first' => $this->build_url(BASE . 'articles/', array('history' => $result->WebEnv . '|' . $result->QueryKey)),
+					'first' => $this->build_url(BASE . 'articles/', array('history' => (string) $result->WebEnv . '|' . (string) $result->QueryKey)),
 				),
 			);
 			//return $this->fetch($result->WebEnv . '|' . $result->QueryKey, (int) $result->Count);
@@ -29,18 +29,21 @@ class Articles extends Collection {
 			$result = $service->get($_GET['related']);
 
 			$ids = array();
-			foreach ($result->LinkSet[0]->LinkSetDb[0]->Link as $link) {
-				$ids[] = $link->Id->{'_'};
+			foreach ($result->LinkSet->LinkSetDb->Link as $link) {
+				$ids[] = (int) $link->Id;
 			}
 
 			$ids = array_slice($ids, 0, $n);
 
 			$service = new EFetchPubMed;
 			$result = $service->getIds(implode(',', $ids));
+			$result = $this->ensureArray($result);
+
+			array_walk($result, array($this, 'fix'));
 
 			return array(
 				'totalResults' => count($ids),
-				'items' => $result->PubmedArticleSet->PubmedArticle,
+				'items' => $result ? $result : array(),
 			);
 		}
 		else {
@@ -57,11 +60,14 @@ class Articles extends Collection {
 
 		$service = new EFetchPubMed;
 		$result = $service->getHistory($history, $offset, $n);
+		$result = $this->ensureArray($result);
+
+		array_walk($result, array($this, 'fix'));
 
 		$data = array(
 			'startIndex' => $offset,
 			'itemsPerPage' => $n,
-			'items' => is_object($result) ? $result->PubmedArticleSet->PubmedArticle : array(),
+			'items' => $result ? $result : array(),
 			'links' => array(),
 		);
 
@@ -70,5 +76,104 @@ class Articles extends Collection {
 		}
 
 		return $data;
+	}
+
+	function fix(&$data) {
+		// title
+		$data->titleInfo->title = rtrim($data->titleInfo->title, '.');
+
+		// names
+		$items = array();
+
+		foreach($this->ensureArray($data->{'name'}) as $item) {
+			$parts = array(
+				'type' => $item->{'@attributes'}->{'type'},
+			);
+
+			foreach($item->{'namePart'} as $part) {
+				$parts[$part->{'@attributes'}->{'type'}][] = $part->{'@text'};
+			}
+
+			$items[] = $parts;
+		}
+
+		if($items) $data->{'name'} = $items;
+
+		// host title
+		$items = array();
+
+		foreach($this->ensureArray($data->{'relatedItem'}->{'titleInfo'}) as $item) {
+			$type = $item->{'@attributes'}->{'type'};
+			if(!$type) $type = 'full';
+			$items[$type] = rtrim($item->{'title'}, '.');
+		}
+
+		if($items) $data->{'relatedItem'}->{'titleInfo'} = $items;
+
+		// host identifiers
+		$items = array();
+
+		foreach($this->ensureArray($data->{'relatedItem'}->{'identifier'}) as $item) {
+			$items[$item->{'@attributes'}->{'type'}] = $item->{'@text'};
+		}
+
+		if($items) $data->{'relatedItem'}->{'identifier'} = $items;
+
+		// host details
+		$items = array();
+
+		foreach($this->ensureArray($data->{'relatedItem'}->{'part'}->{'detail'}) as $item) {
+			$items[$item->{'@attributes'}->{'type'}] = $item->{'number'};
+		}
+
+		if($items) $data->{'relatedItem'}->{'part'}->{'detail'} = $items;
+
+		// pages
+		$items = array();
+
+		foreach($this->ensureArray($data->{'relatedItem'}->{'part'}->{'extent'}) as $item) {
+			$items[$item->{'@attributes'}->{'unit'}] = array(
+				'start' => $item->start,
+				'end' => $item->end,
+			);
+		}
+
+		if($items) $data->{'relatedItem'}->{'part'}->{'extent'} = $items;
+		if($items['page']['start']) {
+			$page = $items['page']['start'];
+			if($items['page']['end']) $page .= '-' . $items['page']['end'];
+			$data->{'relatedItem'}->{'part'}->{'detail'}['page'] = $page;
+		}
+
+		// identifiers
+		$items = array();
+
+		foreach($this->ensureArray($data->{'identifier'}) as $item) {
+			$items[$item->{'@attributes'}->{'type'}] = $item->{'@text'};
+		}
+
+		if($items) $data->{'identifier'} = $items;
+
+		// date
+		$date = $data->{'relatedItem'}->part->date;
+		$date = preg_replace('/\/\w+/g', '');
+		$parts = explode('-', $date);
+
+		if($parts) {
+			try {
+				$date = new DateTime($date);
+
+				$format = implode(' ', array_slice(array('Y', 'M', 'd'), 0, count($parts)));
+				$data->{'relatedItem'}->part->date = $date->format($format);
+			}
+			catch(Exception $e) {
+
+			}
+		}
+	}
+
+	function ensureArray($item) {
+		if(!$item) return array();
+		return is_array($item) ? $item : array($item);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-class EUtils extends SoapService {
-	protected $wsdl = 'http://www.ncbi.nlm.nih.gov/entrez/eutils/soap/v2.0/eutils.wsdl';
+class EUtils extends HTTPService {
+	protected $base = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
 
 	function __construct($tool, $email, $db = 'pubmed') {
 		$this->defaults = array(
@@ -10,10 +10,15 @@ class EUtils extends SoapService {
 			'email' => $email,
 			'usehistory' => 'y',
 			'rettype' => 'xml',
-			'RetStart' => 0,
-			'RetMax' => 20,
+			'retstart' => 0,
+			'retmax' => 20,
 		);
 
 		parent::__construct();
+	}
+
+	function get($params) {
+		$response = $this->client->get($this->url, $params + $this->defaults, 'xml');
+		return simplexml_import_dom($response->dom);
 	}
 }
