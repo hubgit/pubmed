@@ -20,46 +20,57 @@ try {
 			break;
 
 		case 'GET':
-			if(!isset($_GET['history'])) throw new WebException(404);
-
-			$history = $_GET['history'];
-
-			$total = isset($_GET['total']) ? $_GET['total'] : 1000;
-
-			$offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
-			$offset = max(0, $offset);
-
-			$n = isset($_GET['n']) ? (int) $_GET['n'] : 20;
-			$n = min($n, 100);
+			$config = parse_ini_file(__DIR__ . '/config.ini');
 
 			$format = isset($_GET['format']) ? $_GET['format'] : 'application/json';
+
+			$service = new EFetch($config['tool'], $config['email']);
+
+			if(isset($_GET['history'])) {
+				$history = $_GET['history'];
+
+				$total = isset($_GET['total']) ? $_GET['total'] : 1000;
+
+				$offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
+				$offset = max(0, $offset);
+
+				$n = isset($_GET['n']) ? (int) $_GET['n'] : 20;
+				$n = min($n, 100);
+
+				$nlmfile = $service->getHistory($history, $offset, $n);
+			}
+			else if (isset($_GET['id'])) {
+				$nlmfile = $service->getIds($_GET['id']);
+			}
+			else {
+				throw new WebException(404);
+			}
 
 			$response = new Response(200);
 			$response->setContentType($format);
 			$response->outputHeader();
-
-			$config = parse_ini_file(__DIR__ . '/config.ini');
-
-			$service = new EFetch($config['tool'], $config['email']);
-			$nlmfile = $service->getHistory($history, $offset, $n);
 
 			$mods = new MODS($config['bibutils']);
 			$mods->fromNLM($nlmfile);
 
 			switch($format) {
 				case 'application/json':
-					$data = array(
-						'startIndex' => $offset,
-						'itemsPerPage' => $n,
-						'items' => $mods->toJSON(),
-						'links' => array(),
-					);
+					$data = $mods->toJSON();
 
-					$nextOffset = $offset + $n;
+					if (isset($history)) {
+						$data = array(
+							'startIndex' => $offset,
+							'itemsPerPage' => $n,
+							'items' => $data,
+							'links' => array(),
+						);
 
-					if($nextOffset <= $total) {
-						$params = array('history' => $history, 'total' => $total, 'n' => $n, 'offset' => $nextOffset);
-						$data['links']['next'] = $config['base_uri'] . 'articles/' . '?' . http_build_query($params);
+						$nextOffset = $offset + $n;
+
+						if($nextOffset <= $total) {
+							$params = array('history' => $history, 'total' => $total, 'n' => $n, 'offset' => $nextOffset);
+							$data['links']['next'] = $config['base_uri'] . 'articles/' . '?' . http_build_query($params);
+						}
 					}
 
 					$response->setBody($data);

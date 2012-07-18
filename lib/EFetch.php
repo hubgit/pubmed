@@ -38,10 +38,10 @@ class EFetch {
 		return $this->get($params);
 	}
 
-	public function getIds($id) {
+	public function getIds($ids) {
 		$params = array(
 			'db' => 'pubmed',
-			'id' => $id,
+			'id' => $ids,
 		);
 
 		return $this->get($params);
