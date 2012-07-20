@@ -17,7 +17,7 @@ class MODS {
 	}
 
 	public function fromNLM($nlmfile) {
-		if(!file_exists($nlmfile)) throw new WebException(500, 'nlm file not found');
+		if(!file_exists($nlmfile)) throw new WebException(500, 'NLM file not found');
 
 		$command = sprintf($this->bibutils . '/med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($nlmfile), escapeshellarg($this->modsfile));
 		exec($command);
@@ -71,51 +71,6 @@ class MODS {
 
 		if($items) $data->{'name'} = $items;
 
-		// host title
-		$items = array();
-
-		foreach($this->ensureArray($data->{'relatedItem'}->{'titleInfo'}) as $item) {
-			$type = $item->{'@attributes'}->{'type'};
-			if(!$type) $type = 'full';
-			$items[$type] = rtrim($item->{'title'}, '.');
-		}
-
-		if($items) $data->{'relatedItem'}->{'titleInfo'} = $items;
-
-		// host identifiers
-		$items = array();
-
-		foreach($this->ensureArray($data->{'relatedItem'}->{'identifier'}) as $item) {
-			$items[$item->{'@attributes'}->{'type'}] = $item->{'@text'};
-		}
-
-		if($items) $data->{'relatedItem'}->{'identifier'} = $items;
-
-		// host details
-		$items = array();
-
-		foreach($this->ensureArray($data->{'relatedItem'}->{'part'}->{'detail'}) as $item) {
-			$items[$item->{'@attributes'}->{'type'}] = $item->{'number'};
-		}
-
-		if($items) $data->{'relatedItem'}->{'part'}->{'detail'} = $items;
-
-		// pages
-		$items = array();
-
-		foreach($this->ensureArray($data->{'relatedItem'}->{'part'}->{'extent'}) as $item) {
-			$items[$item->{'@attributes'}->{'unit'}] = array(
-				'start' => $item->start,
-				'end' => $item->end,
-			);
-		}
-
-		if($items) $data->{'relatedItem'}->{'part'}->{'extent'} = $items;
-		if($items['page']['start']) {
-			$page = $items['page']['start'];
-			if($items['page']['end']) $page .= '-' . $items['page']['end'];
-			$data->{'relatedItem'}->{'part'}->{'detail'}['page'] = $page;
-		}
 
 		// identifiers
 		$items = array();
@@ -126,8 +81,82 @@ class MODS {
 
 		if($items) $data->{'identifier'} = $items;
 
+		// related items
+
+		foreach($this->ensureArray($data->{'relatedItem'}) as $item) {
+			$type = $item->{'@attributes'}->{'type'};
+			if($type && !isset($data->{$type})) $data->{$type} = $this->fixRelatedItem($item);
+		}
+
+		unset($data->{'@attributes'});
+		unset($data->{'relatedItem'});
+
+		return $data;
+	}
+
+	function fixRelatedItem($data) {
+		// host title
+		$items = array();
+
+		foreach($this->ensureArray($data->{'titleInfo'}) as $item) {
+			$type = $item->{'@attributes'}->{'type'};
+			if(!$type) $type = 'full';
+			$items[$type] = rtrim($item->{'title'}, '.');
+		}
+
+		if($items) $data->{'titleInfo'} = $items;
+
+		// host identifiers
+		$items = array();
+
+		foreach($this->ensureArray($data->{'identifier'}) as $item) {
+			$items[$item->{'@attributes'}->{'type'}] = $item->{'@text'};
+		}
+
+		if($items) $data->{'identifier'} = $items;
+
+		// genre
+		$items = array();
+
+		foreach($this->ensureArray($data->{'genre'}) as $item) {
+			if(is_object($item)) {
+				$items[$item->{'@attributes'}->{'authority'}] = $item->{'@text'};
+			}
+			else {
+				$items['nlm'] = $item;
+			}
+		}
+
+		if($items) $data->{'genre'} = $items;
+
+		// host details
+		$items = array();
+
+		foreach($this->ensureArray($data->{'part'}->{'detail'}) as $item) {
+			$items[$item->{'@attributes'}->{'type'}] = $item->{'number'};
+		}
+
+		if($items) $data->{'part'}->{'detail'} = $items;
+
+		// pages
+		$items = array();
+
+		foreach($this->ensureArray($data->{'part'}->{'extent'}) as $item) {
+			$items[$item->{'@attributes'}->{'unit'}] = array(
+				'start' => $item->start,
+				'end' => $item->end,
+			);
+		}
+
+		if($items) $data->{'part'}->{'extent'} = $items;
+		if($items['page']['start']) {
+			$page = $items['page']['start'];
+			if($items['page']['end']) $page .= '-' . $items['page']['end'];
+			$data->{'part'}->{'detail'}['page'] = $page;
+		}
+
 		// date
-		$date = $data->{'relatedItem'}->part->date;
+		$date = $data->{'part'}->{'date'};
 		$date = preg_replace('/\/\w+/', '', $date);
 		$parts = explode('-', $date);
 
@@ -136,12 +165,14 @@ class MODS {
 				$date = new DateTime($date);
 
 				$format = implode(' ', array_slice(array('Y', 'M', 'd'), 0, count($parts)));
-				$data->{'relatedItem'}->part->date = $date->format($format);
+				$data->{'part'}->{'date'} = $date->format($format);
 			}
 			catch(Exception $e) {
 
 			}
 		}
+
+		unset($data->{'@attributes'});
 
 		return $data;
 	}
