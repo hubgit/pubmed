@@ -6,10 +6,9 @@ class MODS {
 	protected $bibutils;
 	protected $modsfile;
 
-	function __construct($bibutils = './') {
-		if(!file_exists($bibutils . '/med2xml')) throw new WebException(500, 'bibutils not found');
-
-		$this->bibutils = $bibutils;
+	function __construct($bibutils = '.') {
+		$this->bibutils = rtrim($bibutils, '/');
+		if(!file_exists($this->bibutils . '/med2xml')) throw new WebException(500, 'bibutils not found');
 		$this->modsfile = tempnam(sys_get_temp_dir(), 'mods-');
 	}
 
@@ -20,8 +19,7 @@ class MODS {
 	public function fromNLM($nlmfile) {
 		if(!file_exists($nlmfile)) throw new WebException(500, 'nlm file not found');
 
-		$command = sprintf($this->bibutils . 'med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($nlmfile), escapeshellarg($this->modsfile));
-		//print $command;
+		$command = sprintf($this->bibutils . '/med2xml -i utf8 --unicode-no-bom %s > %s', escapeshellarg($nlmfile), escapeshellarg($this->modsfile));
 		exec($command);
 
 		unlink($nlmfile);
@@ -34,13 +32,13 @@ class MODS {
 	}
 
 	public function toBibTeX() {
-		$command = sprintf($this->bibutils . 'xml2bib -i utf8 --unicode-no-bom %s', escapeshellarg($this->modsfile));
+		$command = sprintf($this->bibutils . '/xml2bib -i utf8 --unicode-no-bom %s', escapeshellarg($this->modsfile));
 		//print $command;
 		passthru($command);
 	}
 
 	public function toRIS() {
-		$command = sprintf($this->bibutils . 'xml2ris -i utf8 --unicode-no-bom %s', escapeshellarg($this->modsfile));
+		$command = sprintf($this->bibutils . '/xml2ris -i utf8 --unicode-no-bom %s', escapeshellarg($this->modsfile));
 		//print $command;
 		passthru($command);
 	}

@@ -3,7 +3,7 @@
 ob_start();
 ob_start('ob_gzhandler');
 
-//ini_set('display_errors', true);
+ini_set('display_errors', true);
 //error_reporting(E_ERROR | E_PARSE);
 
 set_include_path(__DIR__ . '/lib/' . PATH_SEPARATOR . get_include_path());
@@ -22,56 +22,21 @@ try {
 		case 'GET':
 			$config = parse_ini_file(__DIR__ . '/config.ini');
 
-			$format = isset($_GET['format']) ? $_GET['format'] : 'application/json';
-
-			$service = new EFetch($config['tool'], $config['email']);
-
-			if(isset($_GET['history'])) {
-				$history = $_GET['history'];
-
-				$total = isset($_GET['total']) ? $_GET['total'] : 1000;
-
-				$offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
-				$offset = max(0, $offset);
-
-				$n = isset($_GET['n']) ? (int) $_GET['n'] : 20;
-				$n = min($n, 100);
-
-				$nlmfile = $service->getHistory($history, $offset, $n);
-			}
-			else if (isset($_GET['id'])) {
-				$nlmfile = $service->getIds($_GET['id']);
-			}
-			else {
-				throw new WebException(404);
-			}
-
-			$response = new Response(200);
-			$response->setContentType($format);
-			$response->outputHeader();
+			$app = new App($config);
+			$app->parse();
 
 			$mods = new MODS($config['bibutils']);
-			$mods->fromNLM($nlmfile);
+			$mods->fromNLM($app->fetch());
 
-			switch($format) {
+			$response = new Response(200);
+			$response->setContentType($app->params['format']);
+			$response->outputHeader();
+
+			switch($response->getContentType()) {
 				case 'application/json':
 					$data = $mods->toJSON();
 
-					if (isset($history)) {
-						$data = array(
-							'startIndex' => $offset,
-							'itemsPerPage' => $n,
-							'items' => $data,
-							'links' => array(),
-						);
-
-						$nextOffset = $offset + $n;
-
-						if($nextOffset <= $total) {
-							$params = array('history' => $history, 'total' => $total, 'n' => $n, 'offset' => $nextOffset);
-							$data['links']['next'] = $config['base_uri'] . 'articles/' . '?' . http_build_query($params);
-						}
-					}
+					if($app->params['history']) $data = $app->data($data, $config['url']);
 
 					$response->setBody($data);
 					$response->outputBody();

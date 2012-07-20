@@ -3,7 +3,7 @@
 class Response {
 	private $status;
 	private $body;
-	private $contentType = 'application/json';
+	private $contentType;
 
 	/**
 	 * http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -59,6 +59,10 @@ class Response {
 
 	function setStatus($status) {
 		$this->status = $status;
+	}
+
+	function getContentType() {
+		return $this->contentType;
 	}
 
 	function setContentType($mimeType) {
