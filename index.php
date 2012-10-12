@@ -3,7 +3,7 @@
 ob_start();
 ob_start('ob_gzhandler');
 
-ini_set('display_errors', true);
+ini_set('display_errors', false);
 //error_reporting(E_ERROR | E_PARSE);
 
 set_include_path(__DIR__ . '/lib/' . PATH_SEPARATOR . get_include_path());
@@ -32,6 +32,8 @@ try {
 			$response->setContentType($app->params['format']);
 			$response->outputHeader();
 
+			$suffix = isset($_GET['id']) ? ('-' . (int) $_GET['id']) : null;
+
 			switch($response->getContentType()) {
 				case 'application/json':
 					$data = $mods->toJSON();
@@ -43,12 +45,12 @@ try {
 				break;
 
 				case 'text/bibtex':
-					header('Content-Disposition: attachment; filename=hubmed.bib');
+					header('Content-Disposition: attachment; filename=hubmed' . $suffix . '.bib');
 					$mods->toBibTeX(); // outputs data directly using passthru
 					break;
 
 				case 'application/research-info-systems':
-					header('Content-Disposition: attachment; filename=hubmed.ris');
+					header('Content-Disposition: attachment; filename=hubmed' . $suffix . '.ris');
 					$mods->toRIS(); // outputs data directly using passthru
 					break;
 

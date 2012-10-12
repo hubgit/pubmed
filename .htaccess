@@ -2,4 +2,5 @@ DirectoryIndex index.html
 
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !index.html
+RewriteCond %{REQUEST_FILENAME} !phpinfo.php
 RewriteRule ^(.+) index.php?_path=$1 [L,QSA]
