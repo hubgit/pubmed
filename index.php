@@ -20,6 +20,20 @@ try {
 			break;
 
 		case 'GET':
+			if ($_GET['term']) {
+				$url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?' . http_build_query($_GET);
+				header('Content-Type: application/xml; charset=utf-8');
+				print file_get_contents($url);
+				exit();
+			}
+
+                        elseif ($_GET['linkname']) {
+                                $url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?' . http_build_query($_GET);
+                                header('Content-Type: application/xml; charset=utf-8');
+				print file_get_contents($url);
+                                exit();
+                        }
+
 			$config = parse_ini_file(__DIR__ . '/config.ini');
 
 			$app = new App($config);
